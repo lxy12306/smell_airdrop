@@ -20,7 +20,6 @@ show_help() {
     echo "用法:"
     echo "  $0 server [OPTIONS] <root_directory>  启动文件传输服务器"
     echo "  $0 client [COMMAND] [OPTIONS]         运行客户端操作"
-    echo "  $0 install                           安装客户端快捷命令"
     echo ""
     echo "服务器选项:"
     echo "  --host HOST     绑定主机地址 (默认: $DEFAULT_HOST - 所有网卡)"
@@ -112,13 +111,6 @@ run_client() {
     python "$CLIENT_SCRIPT" "$@"
 }
 
-
-
-install_client() {
-    source "$ACTIVATE_SCRIPT"
-    python "$CLIENT_SCRIPT" install
-}
-
 # 主逻辑
 case "${1:-help}" in
     server)
@@ -128,9 +120,6 @@ case "${1:-help}" in
     client)
         shift
         run_client "$@"
-        ;;
-    install)
-        install_client
         ;;
     help|--help|-h)
         show_help

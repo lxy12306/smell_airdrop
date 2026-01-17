@@ -14,11 +14,30 @@
 - ✅ 命令行客户端
 - ✅ 快捷命令安装
 
-## 安装依赖
+## 安装说明
 
-```bash
-pip install -r requirements.txt
+### Windows
+双击运行 `install.bat` 脚本，或者在终端中执行：
+```cmd
+.\install.bat
 ```
+该脚本会自动：
+1. 安装 Python 环境和依赖
+2. 创建 `ad` 命令
+3. 自动配置环境变量（PATH）
+4. 配置 PowerShell 别名
+
+### Linux / macOS
+```bash
+chmod +x install.sh
+./install.sh
+```
+该脚本会自动：
+1. 安装 Python 环境
+2. 创建 `ad` 命令
+3. 更新 shell 配置文件 (`.bashrc`, `.zshrc` 等)
+
+> **注意**: 安装完成后，可能需要重启终端才能生效。
 
 ## 快速开始
 
@@ -28,48 +47,29 @@ pip install -r requirements.txt
 ```bash
 # 使用默认配置
 ./airdrop.sh server /path/to/storage
-
-# 自定义端口和主机
-./airdrop.sh server --host 0.0.0.0 --port 9999 /path/to/storage
 ```
 
 **Windows:**
 ```cmd
 # 使用默认配置
 airdrop.bat server C:\path\to\storage
-
-# 自定义端口和主机
-airdrop.bat server --host 0.0.0.0 --port 9999 C:\path\to\storage
 ```
 
-**直接运行:**
-```bash
-python server/server.py /path/to/storage --host 0.0.0.0 --port 8888
-```
+### 2. 使用客户端 (ad)
 
-### 2. 配置客户端
+安装完成后，可以直接使用 `ad` 命令：
 
 ```bash
-# 配置默认服务器
-./airdrop.sh client setup http://localhost:8888
+# 1. 配置默认服务器
+ad setup http://localhost:8888
 
-# 查看当前服务器配置
-./airdrop.sh client servers
+# 2. 查看配置
+ad servers
 
-# 获取服务器信息
-./airdrop.sh client info
-```
-
-### 3. 安装快捷命令
-
-```bash
-# 安装快捷命令 'ad'
-./airdrop.sh install
-
-# 安装后可以直接使用
-ad put file.txt test/1/
-ad get test/1/file.txt ./downloaded_file.txt
-ad list test/
+# 3. 文件传输
+ad put file.txt test/
+ad get test/file.txt
+ad list
 ```
 
 ## 客户端使用
@@ -300,6 +300,15 @@ smell_airdrop/
 - `server/server.py`: 添加新的API端点
 - `client/client.py`: 添加新的客户端命令
 - API支持认证、权限控制等高级功能
+
+### 打包说明
+
+Linux 环境下生成 Python 运行环境包 (`python_linux_x86.tar.xz`) 的命令：
+
+```bash
+# 进入包含 python/ 目录的路径
+XZ_OPT="-9e -T0" tar -cJf python_linux_x86.tar.xz python/
+```
 
 ## License
 

@@ -294,59 +294,6 @@ class AirdropCLI:
             size /= 1024.0
         return f"({size:.1f}TB)"
 
-def install_shortcut(platform_name: Optional[str] = None):
-    """安装快捷命令"""
-    if platform_name is None:
-        platform_name = platform.system().lower()
-    
-    current_file = Path(__file__).resolve()
-    
-    if platform_name == 'windows':
-        # Windows: 创建批处理文件
-        batch_content = f'''@echo off
-python "{current_file}" %*
-'''
-        
-        # 尝试添加到用户目录的Scripts文件夹
-        scripts_dir = Path.home() / 'Scripts'
-        scripts_dir.mkdir(exist_ok=True)
-        
-        batch_file = scripts_dir / 'ad.bat'
-        with open(batch_file, 'w') as f:
-            f.write(batch_content)
-        
-        print(f"Windows shortcut created: {batch_file}")
-        print(f"Add {scripts_dir} to your PATH to use 'ad' command")
-        
-        # 提供添加到PATH的指示
-        print(f"\nTo add to PATH, run in administrator PowerShell:")
-        print(f'[Environment]::SetEnvironmentVariable("PATH", $env:PATH + ";{scripts_dir}", "User")')
-        
-    elif platform_name in ['linux', 'darwin']:  # Linux or macOS
-        # Unix: 创建符号链接或脚本
-        shell_script = f'''#!/bin/bash
-python3 "{current_file}" "$@"
-'''
-        
-        # 尝试添加到 ~/.local/bin
-        local_bin = Path.home() / '.local' / 'bin'
-        local_bin.mkdir(parents=True, exist_ok=True)
-        
-        script_file = local_bin / 'ad'
-        with open(script_file, 'w') as f:
-            f.write(shell_script)
-        
-        script_file.chmod(0o755)  # 添加执行权限
-        
-        print(f"Unix shortcut created: {script_file}")
-        print(f"Add {local_bin} to your PATH to use 'ad' command")
-        print(f"\nAdd this line to your ~/.bashrc or ~/.zshrc:")
-        print(f'export PATH="$PATH:{local_bin}"')
-        
-    else:
-        print(f"Unsupported platform: {platform_name}")
-        print("Please manually create a shortcut to this script")
-
 def main():
     parser = argparse.ArgumentParser(description='Airdrop Client - 轻量级文件传输客户端')
     subparsers = parser.add_subparsers(dest='command', help='可用命令')
@@ -355,11 +302,6 @@ def main():
     setup_parser = subparsers.add_parser('setup', help='配置默认服务器')
     setup_parser.add_argument('url', help='服务器地址 (例如: http://localhost:8000)')
     setup_parser.add_argument('--default', action='store_true', help='已弃用：现在总是设置为默认服务器')
-    
-    # install命令
-    install_parser = subparsers.add_parser('install', help='安装快捷命令 (ad)')
-    install_parser.add_argument('--platform', choices=['windows', 'linux', 'darwin'], 
-                               help='目标平台 (未指定时自动检测)')
     
     # servers命令
     subparsers.add_parser('servers', help='显示当前服务器配置')
@@ -398,8 +340,6 @@ def main():
     try:
         if args.command == 'setup':
             cli.setup_server('default', args.url, args.default)
-        elif args.command == 'install':
-            install_shortcut(args.platform)
         elif args.command == 'servers':
             cli.list_servers()
         elif args.command == 'info':

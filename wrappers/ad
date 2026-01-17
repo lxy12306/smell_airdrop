@@ -1,0 +1,20 @@
+#!/bin/sh
+
+# Default locations
+# Assuming standard install location: ~/.local/share/Airdrop
+INSTALL_ROOT="$HOME/.local/share/Airdrop"
+PYTHON_EXE="$INSTALL_ROOT/python/bin/python3"
+CLIENT_SCRIPT="$INSTALL_ROOT/client/client.py"
+SERVER_SCRIPT="$INSTALL_ROOT/server/server.py"
+
+# Fallback to system python if embedded not found
+if [ ! -x "$PYTHON_EXE" ]; then
+    PYTHON_EXE="python3"
+fi
+
+if [ "$1" = "server" ]; then
+    shift
+    exec "$PYTHON_EXE" "$SERVER_SCRIPT" "$@"
+else
+    exec "$PYTHON_EXE" "$CLIENT_SCRIPT" "$@"
+fi
