@@ -6,6 +6,7 @@ INSTALL_ROOT="$HOME/.local/share/Airdrop"
 PYTHON_EXE="$INSTALL_ROOT/python/bin/python3"
 CLIENT_SCRIPT="$INSTALL_ROOT/client/client.py"
 SERVER_SCRIPT="$INSTALL_ROOT/server/server.py"
+OSS_SCRIPT="$INSTALL_ROOT/oss/oss_cli.py"
 
 # Fallback to system python if embedded not found
 if [ ! -x "$PYTHON_EXE" ]; then
@@ -15,6 +16,17 @@ fi
 if [ "$1" = "server" ]; then
     shift
     exec "$PYTHON_EXE" "$SERVER_SCRIPT" "$@"
+elif [ "$1" = "oss" ]; then
+    shift
+    exec "$PYTHON_EXE" "$OSS_SCRIPT" "$@"
+elif [ "$1" = "python" ]; then
+    shift
+    exec "$PYTHON_EXE" "$@"
 else
+    if [ $# -eq 0 ]; then
+        echo "[INFO] Airdrop Root: $INSTALL_ROOT"
+        echo "[INFO] Python Path:  $INSTALL_ROOT/python"
+        echo ""
+    fi
     exec "$PYTHON_EXE" "$CLIENT_SCRIPT" "$@"
 fi

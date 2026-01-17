@@ -15,6 +15,7 @@ set "SHORTCUT_PATH=%BIN_DIR%\ad.bat"
 set "SRC_PYTHON=%SCRIPT_DIR%python_windows"
 set "SRC_CLIENT=%SCRIPT_DIR%client"
 set "SRC_SERVER=%SCRIPT_DIR%server"
+set "SRC_OSS=%SCRIPT_DIR%oss"
 set "SRC_WRAPPER=%SCRIPT_DIR%wrappers\ad.bat"
 set "SRC_REQ=%SCRIPT_DIR%requirements.txt"
 
@@ -22,11 +23,13 @@ set "SRC_REQ=%SCRIPT_DIR%requirements.txt"
 set "DST_PYTHON=%INSTALL_ROOT%\python_windows"
 set "DST_CLIENT=%INSTALL_ROOT%\client"
 set "DST_SERVER=%INSTALL_ROOT%\server"
+set "DST_OSS=%INSTALL_ROOT%\oss"
 set "DST_PYTHON_EXE=%DST_PYTHON%\python.exe"
 set "DST_CLIENT_SCRIPT=%DST_CLIENT%\client.py"
 
 :: 检查参数
 if "%1"=="uninstall" goto :uninstall
+if "%1"=="pack" goto :pack_python
 
 :install
 echo [INFO] Installing %APP_NAME%...
@@ -76,6 +79,14 @@ xcopy "%SRC_CLIENT%\*" "%DST_CLIENT%\" /E /I /Y /Q >nul
 echo   - Copying Server code...
 xcopy "%SRC_SERVER%\*" "%DST_SERVER%\" /E /I /Y /Q >nul
 
+:: 复制 OSS 工具代码 (覆盖 OSS 目录，但排除 .env)
+echo   - Copying OSS tools...
+xcopy "%SRC_OSS%\*" "%DST_OSS%\" /E /I /Y /Q >nul
+if exist "%DST_OSS%\.env" (
+    del "%DST_OSS%\.env"
+)
+
+
 :: 3. 安装依赖 (如果 requirements.txt 存在)
 if exist "%SRC_REQ%" (
     echo [INFO] Installing dependencies...
@@ -124,6 +135,66 @@ call :update_env uninstall
 
 echo.
 echo [DONE] Uninstallation complete.
+goto :eof
+
+:: --- 打包/更新 Python 环境 ---
+:pack_python
+echo [INFO] Updating Python Package (Pack Mode)...
+
+:: 0. 检查系统架构
+if /i "%PROCESSOR_ARCHITECTURE%"=="ARM64" (
+    echo [ERROR] ARM architecture is not currently supported on Windows.
+    exit /b 1
+)
+
+:: 1. 检查内嵌 Python 源
+set "SRC_PYTHON_ARCHIVE=%SCRIPT_DIR%python_windows_x86.tar.gz"
+
+:: 2. 解压 (如果目录不存在)
+if not exist "%SRC_PYTHON%\python.exe" (
+    if exist "%SRC_PYTHON_ARCHIVE%" (
+        echo [INFO] Extracting archive...
+        tar -xzf "%SRC_PYTHON_ARCHIVE%"
+        set "CLEANUP_PYTHON=1"
+    ) else (
+        echo [ERROR] No python source or archive found "%SRC_PYTHON%" or "%SRC_PYTHON_ARCHIVE%".
+        exit /b 1
+    )
+)
+
+:: 3. 安装依赖
+echo [INFO] Installing requirements to embedded Python...
+"%SRC_PYTHON%\python.exe" -m pip install -r "%SRC_REQ%"
+if errorlevel 1 (
+    echo [ERROR] Pip install failed.
+    exit /b 1
+)
+
+:: 4. 清理垃圾文件
+echo [INFO] Cleaning __pycache__...
+for /d /r "%SRC_PYTHON%" %%d in (__pycache__) do @if exist "%%d" rd /s /q "%%d"
+for /r "%SRC_PYTHON%" %%f in (*.pyc) do @del "%%f"
+
+:: 4. 重新打包
+echo [INFO] Creating archive %SRC_PYTHON_ARCHIVE%...
+if exist "%SRC_PYTHON_ARCHIVE%" (
+    echo [INFO] Backing up old archive...
+    move /Y "%SRC_PYTHON_ARCHIVE%" "%SRC_PYTHON_ARCHIVE%.bak" >nul
+)
+
+:: 注意: tar 在 Windows 上对路径比较敏感，确保在当前目录下操作
+tar -czf "python_windows_x86.tar.gz" python_windows
+
+echo [SUCCESS] Updated %SRC_PYTHON_ARCHIVE%
+echo Size:
+for %%I in ("%SRC_PYTHON_ARCHIVE%") do echo %%~zI bytes
+
+:: 5. 清理 (如果此脚本解压了它)
+if defined CLEANUP_PYTHON (
+    echo [INFO] Cleaning up extracted Python environment...
+    if exist "%SRC_PYTHON%" rmdir /S /Q "%SRC_PYTHON%"
+)
+
 goto :eof
 
 :: --- 子程序: 更新环境变量和别名 ---

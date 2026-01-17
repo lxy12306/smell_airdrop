@@ -12,7 +12,10 @@
 - ✅ 跨平台支持 (Windows/Linux/macOS)
 - ✅ RESTful API
 - ✅ 命令行客户端
+- ✅ 阿里云 OSS 命令行工具
+- ✅ 内置 Python 环境隔离
 - ✅ 快捷命令安装
+- ✅ 开发打包工具
 
 ## 安装说明
 
@@ -63,16 +66,21 @@ ad server C:\path\to\storage
 # 1. 配置默认服务器
 ad setup http://localhost:8888
 
-# 2. 查看配置
-ad servers
-
-# 3. 文件传输
+# 2. 文件传输
 ad put file.txt test/
 ad get test/file.txt
 ad list
+
+# 3. OSS 操作
+ad oss config --id <AccessKeyId> --secret <AccessKeySecret>
+ad oss put local_file.txt
+ad oss list
+
+# 4. Python 脚本
+ad python script.py
 ```
 
-## 客户端使用
+## 客户端使用详解
 
 ### 配置管理
 ```bash
@@ -124,6 +132,78 @@ ad delete test/1/file.txt
 ad delete test/empty_dir/
 ```
 
+## OSS 命令行工具 (ad oss)
+
+Airdrop 提供了阿里云 OSS 的便捷操作工具。
+
+### 配置 OSS
+```bash
+# 配置 AccessKey (自动保存到本地 .env)
+ad oss config --id LTAIxxx --secret xxxxxx
+
+# 配置 Bucket 和 Endpoint (可选)
+ad oss config --bucket my-bucket --endpoint http://oss-cn-hangzhou.aliyuncs.com
+```
+
+### OSS 文件操作
+```bash
+# 上传文件
+ad oss put file.txt
+ad oss put file.txt oss_path/file.txt
+
+# 下载文件
+ad oss get oss_path/file.txt
+ad oss get oss_path/file.txt ./local_file.txt
+
+# 列出文件
+ad oss list
+ad oss list prefix/
+
+# 删除文件
+ad oss delete oss_path/file.txt
+
+# 检查文件存在
+ad oss exists oss_path/file.txt
+```
+
+## Python 环境使用 (ad python)
+
+Airdrop 内置了一个独立的 Python 环境。您可以使用 `ad python` 命令来使用它，而无需污染系统的 Python 环境。
+
+```bash
+# 1. 进入交互式 Python Shell
+ad python
+
+# 2. 运行 Python 脚本
+ad python my_script.py
+
+# 3. 安装额外的包 (仅影响 Airdrop 环境)
+ad python -m pip install pandas
+```
+
+## 打包与维护 (Pack Mode)
+
+脚本现在支持自动打包功能（更新依赖、清理缓存、重新压缩）。
+
+**Windows:**
+```cmd
+.\install.bat pack
+```
+
+**Linux / macOS:**
+```bash
+./install.sh pack
+```
+
+此命令会自动：
+1. 解压现有的 Python 压缩包（如果目录不存在）
+2. 安装 `requirements.txt` 中的依赖
+3. 清理 `__pycache__` 和 `.pyc` 文件
+4. 重新打包为 `.tar.gz` 或 `.tar.xz`
+5. 清理临时解压的目录
+
+> **注意**: Linux 下默认使用 `xz` 进行高压缩率打包 (`-9e -T0`)。所有 `pack` 操作都会在完成后自动清理临时解压的 python 目录。
+
 ## API 文档
 
 ### 服务器信息
@@ -158,89 +238,6 @@ GET /api/list/<path:dir_path>
 DELETE /api/delete/<path:file_path>
 ```
 
-## 使用示例
-
-### 场景1: 文件传输到远程服务器
-
-```bash
-# 1. 启动服务器 (在远程Linux服务器上)
-ad server --host 0.0.0.0 --port 8888 /home/user/files
-
-# 2. 配置客户端 (在本地机器上)
-ad setup remote http://remote-server:8888 --default
-
-# 3. 上传文件
-ad put document.pdf work/documents/
-ad put photos/*.jpg photos/vacation/
-
-# 4. 查看文件
-ad list work/documents/
-ad list photos/vacation/
-```
-
-### 场景2: 团队文件共享
-
-```bash
-# 服务器管理员启动服务
-ad server /shared/team-files
-
-# 团队成员配置客户端
-ad setup team http://team-server:8888 --default
-
-# 上传项目文件
-ad put project.zip projects/v1.0/
-ad put design.psd assets/designs/
-
-# 下载其他人的文件
-ad get projects/v1.0/project.zip ./
-ad list assets/designs/
-```
-
-### 场景3: 备份文件
-
-```bash
-# 配置备份服务器
-ad setup backup http://backup-server:8888
-
-# 批量备份
-ad put important.doc backup/daily/$(date +%Y%m%d)/
-ad put database.sql backup/db/$(date +%Y%m%d)/
-
-# 查看备份
-ad list backup/daily/ --server backup
-```
-
-## 配置文件
-
-客户端配置文件位于: `~/.airdrop_config.json`
-
-```json
-{
-  "servers": {
-    "myserver": {
-      "url": "http://localhost:8888"
-    },
-    "backup": {
-      "url": "http://backup.example.com:8888"
-    }
-  },
-  "default_server": "myserver"
-}
-```
-
-## 安全说明
-
-1. **路径安全**: 所有文件操作都限制在指定的根目录内
-2. **文件名安全**: 自动清理不安全的文件名字符
-3. **大小限制**: 可配置最大文件上传大小
-4. **网络访问**: 建议在可信网络环境中使用，或配置适当的防火墙规则
-
-## 系统要求
-
-- Python 3.7+
-- Flask 2.0+
-- Requests 2.25+
-
 ## 故障排除
 
 ### 1. 端口被占用
@@ -270,47 +267,22 @@ curl http://localhost:8888/api/info
 sudo ufw status
 ```
 
-### 4. 客户端配置问题
-```bash
-# 重新配置服务器
-ad setup myserver http://correct-url:8888 --default
-
-# 检查配置文件
-cat ~/.airdrop_config.json
-```
-
-## 开发
-
-### 项目结构
+## 项目结构
 ```
 smell_airdrop/
 ├── server/
 │   └── server.py          # 服务器端
 ├── client/
 │   └── client.py          # 客户端
+├── oss/
+│   └── oss_cli.py         # OSS 命令行工具
 ├── wrappers/
 │   ├── ad                 # Linux 命令封装
 │   └── ad.bat             # Windows 命令封装
 ├── install.bat            # Windows 安装脚本
 ├── install.sh             # Linux/macOS 安装脚本
 ├── requirements.txt       # Python 依赖
-└── README.md             # 文档
-```
-
-### 扩展开发
-
-如需扩展功能，可以修改：
-- `server/server.py`: 添加新的API端点
-- `client/client.py`: 添加新的客户端命令
-- API支持认证、权限控制等高级功能
-
-### 打包说明
-
-Linux 环境下生成 Python 运行环境包 (`python_linux_x86.tar.xz`) 的命令：
-
-```bash
-# 进入包含 python/ 目录的路径
-XZ_OPT="-9e -T0" tar -cJf python_linux_x86.tar.xz python/
+└── README.md              # 文档
 ```
 
 ## License

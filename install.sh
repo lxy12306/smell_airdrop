@@ -11,6 +11,7 @@ SHORTCUT_PATH="$BIN_DIR/ad"
 # Source Directories
 SRC_CLIENT="$SCRIPT_DIR/client"
 SRC_SERVER="$SCRIPT_DIR/server"
+SRC_OSS="$SCRIPT_DIR/oss"
 SRC_WRAPPER="$SCRIPT_DIR/wrappers/ad"
 SRC_REQ="$SCRIPT_DIR/requirements.txt"
 
@@ -18,8 +19,77 @@ SRC_REQ="$SCRIPT_DIR/requirements.txt"
 DST_PYTHON="$INSTALL_ROOT/python"
 DST_CLIENT="$INSTALL_ROOT/client"
 DST_SERVER="$INSTALL_ROOT/server"
+DST_OSS="$INSTALL_ROOT/oss"
 DST_PYTHON_EXE="$DST_PYTHON/bin/python3"
 DST_CLIENT_SCRIPT="$DST_CLIENT/client.py"
+
+# Pack Function
+do_pack() {
+    echo "[INFO] Updating Python Package (Pack Mode)..."
+
+    # 1. Determine Archive Name (Same logic as install)
+    # We assume we are packing for the current OS/Arch if not specified
+    # But usually this script runs on the dev machine.
+    # Let's assume we are maintaining the archive for the CURRENT platform or specific mapped folders.
+    
+    # Check if we have specific folder "python_linux_x86" or similar?
+    # For now, let's just support the structure we defined: SRC_PYTHON
+    
+    # We need to re-evaluate SRC_PYTHON based on logic or use what was set?
+    # The top logic set SRC_PYTHON based on uname. 
+    # If we are packing, we want to pack what we have.
+    
+    local _target_dir=$(basename "$SRC_PYTHON")
+    echo "[INFO] Target Python Directory: $_target_dir, Archive: $SRC_PYTHON"
+    
+    if [ ! -d "$SRC_PYTHON" ]; then
+        if [ -f "$SRC_PYTHON_ARCHIVE" ]; then
+             echo "[INFO] Extracting archive $SRC_PYTHON_ARCHIVE..."
+             case "$SRC_PYTHON_ARCHIVE" in
+                *.tar.gz) tar -xzf "$SRC_PYTHON_ARCHIVE" -C "$SCRIPT_DIR" ;;
+                *.tar.xz) tar -xf "$SRC_PYTHON_ARCHIVE" -C "$SCRIPT_DIR" ;;
+            esac
+            _CLEANUP_PYTHON=1
+        else
+             echo "[ERROR] No python source directory or archive found."
+             exit 1
+        fi
+    fi
+    
+    # 2. Pip Install
+    echo "[INFO] Installing requirements..."
+    if [ -f "$SRC_REQ" ]; then
+        "$SRC_PYTHON/bin/python3" -m pip install -r "$SRC_REQ" --no-warn-script-location >/dev/null 2>&1
+    fi
+    
+    # 3. Cleanup
+    echo "[INFO] Cleaning up pycache..."
+    find "$SRC_PYTHON" -type d -name "__pycache__" -exec rm -rf {} +
+    find "$SRC_PYTHON" -type f -name "*.pyc" -delete
+    
+    # 4. Repack
+    echo "[INFO] Repacking to $SRC_PYTHON_ARCHIVE..."
+    if [ -f "$SRC_PYTHON_ARCHIVE" ]; then
+        mv "$SRC_PYTHON_ARCHIVE" "${SRC_PYTHON_ARCHIVE}.bak"
+    fi
+    
+    # Identify compression
+    case "$SRC_PYTHON_ARCHIVE" in
+        *.tar.gz) tar -czf "$SRC_PYTHON_ARCHIVE" -C "$SCRIPT_DIR" "$_target_dir" ;;
+        *.tar.xz) 
+            echo "[INFO] Compressing with xz (-9e -T0)..."
+            XZ_OPT="-9e -T0" tar -cJf "$SRC_PYTHON_ARCHIVE" -C "$SCRIPT_DIR" "$_target_dir" 
+            ;;
+    esac
+    
+
+    # 5. Cleanup if we extracted it
+    if [ "$_CLEANUP_PYTHON" = "1" ]; then
+        echo "[INFO] Cleaning up extracted Python environment..."
+        rm -rf "$SRC_PYTHON"
+    fi
+    echo "[SUCCESS] Updated $SRC_PYTHON_ARCHIVE"
+}
 
 # OS and Architecture Detection
 OS_TYPE=$(uname -s)
@@ -41,6 +111,11 @@ else
         SRC_PYTHON="$SCRIPT_DIR/python_linux"
         SRC_PYTHON_ARCHIVE="${SRC_PYTHON}.tar.gz"
     fi
+fi
+
+if [ "$1" = "pack" ]; then
+    do_pack
+    exit 0
 fi
 
 # Helper function to process a single config file
@@ -105,6 +180,7 @@ do_install() {
                 *.tar.xz) tar -xf "$SRC_PYTHON_ARCHIVE" -C "$SCRIPT_DIR" ;;
                 *) echo "[WARNING] Unknown archive format: $SRC_PYTHON_ARCHIVE" ;;
             esac
+            _CLEANUP_PYTHON=1
         fi
     fi
 
@@ -132,6 +208,13 @@ do_install() {
     mkdir -p "$DST_SERVER"
     cp -r "$SRC_SERVER/"* "$DST_SERVER/"
 
+    # Copy OSS Code
+    echo "[INFO] Copying OSS tools..."
+    mkdir -p "$DST_OSS"
+    cp -r "$SRC_OSS/"* "$DST_OSS/"
+    # Remove .env if it was copied
+    rm -f "$DST_OSS/.env"
+
     # 4. Install Dependencies
     if [ -f "$SRC_REQ" ]; then
         echo "[INFO] Installing dependencies..."
@@ -152,6 +235,12 @@ do_install() {
 
     # 6. Update PATH
     update_shell_config "install"
+
+    # 7. Cleanup extracted Python
+    if [ "$_CLEANUP_PYTHON" = "1" ]; then
+        echo "[INFO] Cleaning up extracted Python environment..."
+        rm -rf "$SRC_PYTHON"
+    fi
 
     echo ""
     echo "[DONE] Installation complete!"
