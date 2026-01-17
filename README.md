@@ -46,13 +46,13 @@ chmod +x install.sh
 **Linux/macOS:**
 ```bash
 # 使用默认配置
-./airdrop.sh server /path/to/storage
+ad server /path/to/storage
 ```
 
 **Windows:**
 ```cmd
 # 使用默认配置
-airdrop.bat server C:\path\to\storage
+ad server C:\path\to\storage
 ```
 
 ### 2. 使用客户端 (ad)
@@ -164,14 +164,14 @@ DELETE /api/delete/<path:file_path>
 
 ```bash
 # 1. 启动服务器 (在远程Linux服务器上)
-./airdrop.sh server --host 0.0.0.0 --port 8888 /home/user/files
+ad server --host 0.0.0.0 --port 8888 /home/user/files
 
 # 2. 配置客户端 (在本地机器上)
 ad setup remote http://remote-server:8888 --default
 
 # 3. 上传文件
-ad upload document.pdf work/documents/
-ad upload photos/*.jpg photos/vacation/
+ad put document.pdf work/documents/
+ad put photos/*.jpg photos/vacation/
 
 # 4. 查看文件
 ad list work/documents/
@@ -182,17 +182,17 @@ ad list photos/vacation/
 
 ```bash
 # 服务器管理员启动服务
-./airdrop.sh server /shared/team-files
+ad server /shared/team-files
 
 # 团队成员配置客户端
 ad setup team http://team-server:8888 --default
 
 # 上传项目文件
-ad upload project.zip projects/v1.0/
-ad upload design.psd assets/designs/
+ad put project.zip projects/v1.0/
+ad put design.psd assets/designs/
 
 # 下载其他人的文件
-ad download projects/v1.0/project.zip ./
+ad get projects/v1.0/project.zip ./
 ad list assets/designs/
 ```
 
@@ -203,8 +203,8 @@ ad list assets/designs/
 ad setup backup http://backup-server:8888
 
 # 批量备份
-ad upload important.doc backup/daily/$(date +%Y%m%d)/
-ad upload database.sql backup/db/$(date +%Y%m%d)/
+ad put important.doc backup/daily/$(date +%Y%m%d)/
+ad put database.sql backup/db/$(date +%Y%m%d)/
 
 # 查看备份
 ad list backup/daily/ --server backup
@@ -249,7 +249,7 @@ ad list backup/daily/ --server backup
 netstat -tulpn | grep :8888
 
 # 使用其他端口
-./airdrop.sh server --port 9999 /path/to/storage
+ad server --port 9999 /path/to/storage
 ```
 
 ### 2. 权限问题
@@ -288,8 +288,11 @@ smell_airdrop/
 │   └── server.py          # 服务器端
 ├── client/
 │   └── client.py          # 客户端
-├── airdrop.sh             # Linux/macOS 启动脚本
-├── airdrop.bat            # Windows 启动脚本
+├── wrappers/
+│   ├── ad                 # Linux 命令封装
+│   └── ad.bat             # Windows 命令封装
+├── install.bat            # Windows 安装脚本
+├── install.sh             # Linux/macOS 安装脚本
 ├── requirements.txt       # Python 依赖
 └── README.md             # 文档
 ```
