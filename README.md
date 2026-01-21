@@ -20,27 +20,73 @@
 ## 安装说明
 
 ### Windows
+
+#### 默认安装（使用 'ad' 快捷方式）
 双击运行 `install.bat` 脚本，或者在终端中执行：
 ```cmd
 .\install.bat
 ```
-该脚本会自动：
-1. 安装 Python 环境和依赖
-2. 创建 `ad` 命令
-3. 自动配置环境变量（PATH）
-4. 配置 PowerShell 别名
+
+#### 自定义快捷方式名称
+如果 `ad` 命令已被占用，可以指定自定义的快捷方式名称：
+```cmd
+.\install.bat ad1
+```
+这将创建 `ad1.bat` 快捷方式，避免与现有命令冲突。
+
+安装脚本会自动：
+1. 检测快捷方式是否已存在
+2. 如果存在，提供选项：覆盖(O) / 重命名(R) / 取消(C)
+3. 安装 Python 环境和依赖
+4. 创建自定义快捷命令
+5. 自动配置环境变量（PATH）
+6. 配置 PowerShell 别名
 
 ### Linux / macOS
+
+#### 默认安装（使用 'ad' 快捷方式）
 ```bash
 chmod +x install.sh
 ./install.sh
 ```
-该脚本会自动：
-1. 安装 Python 环境
-2. 创建 `ad` 命令
-3. 更新 shell 配置文件 (`.bashrc`, `.zshrc` 等)
 
-> **注意**: 安装完成后，可能需要重启终端才能生效。
+#### 自定义快捷方式名称
+```bash
+./install.sh ad1
+```
+或者
+```bash
+./install.sh install ad1
+```
+
+安装脚本会自动：
+1. 检测快捷方式是否已存在
+2. 如果存在，提供选项：覆盖(O) / 重命名(R) / 取消(C)
+3. 安装 Python 环境
+4. 创建自定义快捷命令
+5. 更新 shell 配置文件 (`.bashrc`, `.zshrc` 等)
+
+> **注意**: 安装完成后，可能需要重启终端或运行 `source ~/.bashrc` 才能生效。
+
+### 卸载
+
+#### Windows
+```cmd
+# 卸载默认的 'ad' 快捷方式
+.\install.bat uninstall
+
+# 卸载自定义快捷方式（如 'ad1'）
+.\install.bat uninstall ad1
+```
+
+#### Linux / macOS
+```bash
+# 卸载默认的 'ad' 快捷方式
+./install.sh uninstall
+
+# 卸载自定义快捷方式（如 'ad1'）
+./install.sh uninstall ad1
+```
 
 ## 快速开始
 
@@ -58,11 +104,14 @@ ad server /path/to/storage
 ad server C:\path\to\storage
 ```
 
-### 2. 使用客户端 (ad)
+### 2. 使用客户端
 
-安装完成后，可以直接使用 `ad` 命令：
+安装完成后，可以使用你指定的快捷命令（默认为 `ad`）：
 
 ```bash
+# 以下示例使用默认的 'ad' 命令
+# 如果你安装时使用了自定义名称（如 'ad1'），请将 'ad' 替换为 'ad1'
+
 # 1. 配置默认服务器
 ad setup http://localhost:8888
 

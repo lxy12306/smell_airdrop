@@ -9,7 +9,8 @@ set "APP_NAME=Airdrop"
 set "INSTALL_ROOT=%LOCALAPPDATA%\Airdrop"
 :: 快捷方式目录
 set "BIN_DIR=%USERPROFILE%\Scripts"
-set "SHORTCUT_PATH=%BIN_DIR%\ad.bat"
+:: 默认快捷方式名称
+set "SHORTCUT_NAME=ad"
 
 :: 源目录
 set "SRC_PYTHON=%SCRIPT_DIR%python_windows"
@@ -30,6 +31,33 @@ set "DST_CLIENT_SCRIPT=%DST_CLIENT%\client.py"
 :: 检查参数
 if "%1"=="uninstall" goto :uninstall
 if "%1"=="pack" goto :pack_python
+
+:: 检查是否提供了自定义快捷方式名称
+if not "%1"=="" (
+    :: 验证第一个参数不是命令
+    if not "%1"=="install" (
+        set "SHORTCUT_NAME=%1"
+    )
+)
+
+:: 检查快捷方式是否已存在
+:check_shortcut_name
+set "SHORTCUT_PATH=%BIN_DIR%\%SHORTCUT_NAME%.bat"
+if exist "!SHORTCUT_PATH!" (
+    echo [WARNING] Shortcut '!SHORTCUT_NAME!.bat' already exists at: !SHORTCUT_PATH!
+    set /p "USER_CHOICE=Do you want to: [O]verwrite / [R]ename / [C]ancel? "
+    if /i "!USER_CHOICE!"=="O" goto :install
+    if /i "!USER_CHOICE!"=="R" (
+        set /p "SHORTCUT_NAME=Enter a new shortcut name: "
+        goto :check_shortcut_name
+    )
+    if /i "!USER_CHOICE!"=="C" (
+        echo [INFO] Installation cancelled.
+        exit /b 0
+    )
+    echo [ERROR] Invalid choice. Installation cancelled.
+    exit /b 1
+)
 
 :install
 echo [INFO] Installing %APP_NAME%...
@@ -99,6 +127,7 @@ if not exist "%BIN_DIR%" mkdir "%BIN_DIR%"
 echo [INFO] Installing wrapper script...
 copy /Y "%SRC_WRAPPER%" "%SHORTCUT_PATH%" >nul
 echo [SUCCESS] Shortcut created at: "%SHORTCUT_PATH%"
+echo [INFO] You can use the '%SHORTCUT_NAME%' command to run Airdrop.
 
 :: 5. 更新环境 (PATH 和 别名)
 call :update_env install
@@ -111,16 +140,26 @@ if defined CLEANUP_PYTHON (
 
 echo.
 echo [DONE] Installation complete!
-echo You may need to restart your terminal to use the 'ad' command.
+echo You may need to restart your terminal to use the '%SHORTCUT_NAME%' command.
 goto :eof
 
 :uninstall
-echo [INFO] Uninstalling %APP_NAME%...
+:: 检查是否指定了快捷方式名称
+if not "%2"=="" (
+    set "SHORTCUT_NAME=%2"
+) else (
+    set "SHORTCUT_NAME=ad"
+)
+set "SHORTCUT_PATH=%BIN_DIR%\!SHORTCUT_NAME!.bat"
+
+echo [INFO] Uninstalling %APP_NAME% (shortcut: !SHORTCUT_NAME!)...
 
 :: 1. 删除快捷方式
 if exist "%SHORTCUT_PATH%" (
     del "%SHORTCUT_PATH%"
     echo [SUCCESS] Removed shortcut: "%SHORTCUT_PATH%"
+) else (
+    echo [WARNING] Shortcut not found: "%SHORTCUT_PATH%"
 )
 
 :: 2. 删除安装文件
@@ -206,7 +245,7 @@ echo [INFO] Updating PATH and Aliases (%ACTION%)...
 if exist "%PS_SCRIPT%" del "%PS_SCRIPT%"
 
 :: 生成 PowerShell 脚本 (使用逐行写入以避免 Batch 块解析错误)
-echo param($targetDir, $shortcutPath, $action) >> "%PS_SCRIPT%"
+echo param($targetDir, $shortcutPath, $shortcutName, $action) >> "%PS_SCRIPT%"
 echo $targetDir = $targetDir.TrimEnd('\') >> "%PS_SCRIPT%"
 echo $scope = 'User' >> "%PS_SCRIPT%"
 echo. >> "%PS_SCRIPT%"
@@ -245,21 +284,22 @@ echo } >> "%PS_SCRIPT%"
 echo. >> "%PS_SCRIPT%"
 echo if (Test-Path $profilePath) { >> "%PS_SCRIPT%"
 echo     $content = Get-Content $profilePath >> "%PS_SCRIPT%"
-echo     # 清理旧别名 (Clean) >> "%PS_SCRIPT%"
-echo     $newContent = $content ^| Where-Object { $_ -notmatch 'Set-Alias.*["'']ad["'']' } >> "%PS_SCRIPT%"
+echo     # 清理该快捷方式名称的旧别名 (Clean) >> "%PS_SCRIPT%"
+echo     $pattern = "Set-Alias.*[""'']" + [regex]::Escape($shortcutName) + "[""'']" >> "%PS_SCRIPT%"
+echo     $newContent = $content ^| Where-Object { $_ -notmatch $pattern } >> "%PS_SCRIPT%"
 echo     $newContent ^| Set-Content $profilePath >> "%PS_SCRIPT%"
-echo     Write-Host "[INFO] Cleaned old 'ad' aliases from Profile." >> "%PS_SCRIPT%"
+echo     Write-Host "[INFO] Cleaned old '$shortcutName' aliases from Profile." >> "%PS_SCRIPT%"
 echo. >> "%PS_SCRIPT%"
 echo     if ($action -eq 'install') { >> "%PS_SCRIPT%"
 echo         # 设置新别名 (Set) >> "%PS_SCRIPT%"
 echo         # 使用单引号包裹 PowerShell 命令中的双引号 >> "%PS_SCRIPT%"
-echo         Add-Content $profilePath "Set-Alias -Name ad -Value ""$shortcutPath""" >> "%PS_SCRIPT%"
-echo         Write-Host "[SUCCESS] Added 'ad' alias to PowerShell Profile." >> "%PS_SCRIPT%"
+echo         Add-Content $profilePath "Set-Alias -Name $shortcutName -Value ""$shortcutPath""" >> "%PS_SCRIPT%"
+echo         Write-Host "[SUCCESS] Added '$shortcutName' alias to PowerShell Profile." >> "%PS_SCRIPT%"
 echo     } >> "%PS_SCRIPT%"
 echo } >> "%PS_SCRIPT%"
 
 :: 执行 PowerShell 脚本
-powershell -NoProfile -ExecutionPolicy Bypass -File "%PS_SCRIPT%" -targetDir "%BIN_DIR%" -shortcutPath "%SHORTCUT_PATH%" -action "%ACTION%"
+powershell -NoProfile -ExecutionPolicy Bypass -File "%PS_SCRIPT%" -targetDir "%BIN_DIR%" -shortcutPath "%SHORTCUT_PATH%" -shortcutName "%SHORTCUT_NAME%" -action "%ACTION%"
 
 :: 清理临时脚本
 if exist "%PS_SCRIPT%" del "%PS_SCRIPT%"

@@ -6,7 +6,8 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 APP_NAME="Airdrop"
 INSTALL_ROOT="$HOME/.local/share/Airdrop"
 BIN_DIR="$HOME/.local/bin"
-SHORTCUT_PATH="$BIN_DIR/ad"
+# Default shortcut name
+SHORTCUT_NAME="ad"
 
 # Source Directories
 SRC_CLIENT="$SCRIPT_DIR/client"
@@ -170,6 +171,34 @@ update_shell_config() {
 do_install() {
     echo "[INFO] Installing $APP_NAME..."
 
+    # Check if shortcut name was provided as parameter
+    if [ -n "$INSTALL_SHORTCUT_NAME" ]; then
+        SHORTCUT_NAME="$INSTALL_SHORTCUT_NAME"
+    fi
+    
+    SHORTCUT_PATH="$BIN_DIR/$SHORTCUT_NAME"
+    
+    # Check if shortcut already exists
+    while [ -f "$SHORTCUT_PATH" ]; do
+        echo "[WARNING] Shortcut '$SHORTCUT_NAME' already exists at: $SHORTCUT_PATH"
+        printf "Do you want to: [O]verwrite / [R]ename / [C]ancel? "
+        read -r USER_CHOICE
+        case "$USER_CHOICE" in
+            [Oo])
+                break
+                ;;
+            [Rr])
+                printf "Enter a new shortcut name: "
+                read -r SHORTCUT_NAME
+                SHORTCUT_PATH="$BIN_DIR/$SHORTCUT_NAME"
+                ;;
+            [Cc]|*)
+                echo "[INFO] Installation cancelled."
+                exit 0
+                ;;
+        esac
+    done
+
     # 1. Check Python Source
     if [ ! -d "$SRC_PYTHON" ]; then
         if [ -f "$SRC_PYTHON_ARCHIVE" ]; then
@@ -232,6 +261,7 @@ do_install() {
     cat "$SRC_WRAPPER" | tr -d '\r' > "$SHORTCUT_PATH"
     chmod +x "$SHORTCUT_PATH"
     echo "  [SUCCESS] Created: $SHORTCUT_PATH"
+    echo "  [INFO] You can use the '$SHORTCUT_NAME' command to run Airdrop."
 
     # 6. Update PATH
     update_shell_config "install"
@@ -244,16 +274,25 @@ do_install() {
 
     echo ""
     echo "[DONE] Installation complete!"
-    echo "You may need to restart your terminal or run 'source ~/.bashrc' (or ~/.zshrc) to use 'ad'."
+    echo "You may need to restart your terminal or run 'source ~/.bashrc' (or ~/.zshrc) to use '$SHORTCUT_NAME'."
 }
 
 do_uninstall() {
     echo "[INFO] Uninstalling $APP_NAME..."
 
+    # Check if shortcut name was provided as parameter
+    if [ -n "$UNINSTALL_SHORTCUT_NAME" ]; then
+        SHORTCUT_NAME="$UNINSTALL_SHORTCUT_NAME"
+    fi
+    
+    SHORTCUT_PATH="$BIN_DIR/$SHORTCUT_NAME"
+
     # 1. Remove Shortcut
     if [ -f "$SHORTCUT_PATH" ]; then
         rm "$SHORTCUT_PATH"
         echo "  [REMOVED] $SHORTCUT_PATH"
+    else
+        echo "  [WARNING] Shortcut not found: $SHORTCUT_PATH"
     fi
 
     # 2. Remove Install Directory
@@ -267,34 +306,47 @@ do_uninstall() {
 
     echo ""
     echo "[DONE] Uninstallation complete."
-    echo "Note: If you still see 'No such file or directory' when running 'ad', it is because your shell"
+    echo "Note: If you still see 'No such file or directory' when running '$SHORTCUT_NAME', it is because your shell"
     echo "has cached the command location. Run 'hash -r' (bash) or restart your terminal to fix it."
 }
 
 show_help() {
-    echo "Usage: $0 {install|uninstall|help}"
+    echo "Usage: $0 [install|uninstall|help] [shortcut_name]"
     echo ""
     echo "Commands:"
-    echo "  install    Install Airdrop client and dependencies"
-    echo "  uninstall  Remove Airdrop client"
-    echo "  help       Show this help message"
+    echo "  install [name]    Install Airdrop client and dependencies"
+    echo "                    Optional: specify custom shortcut name (default: ad)"
+    echo "  uninstall [name]  Remove Airdrop client"
+    echo "                    Optional: specify shortcut name to remove (default: ad)"
+    echo "  help              Show this help message"
+    echo ""
+    echo "Examples:"
+    echo "  $0 install          # Install with default 'ad' shortcut"
+    echo "  $0 install ad1      # Install with 'ad1' shortcut"
+    echo "  $0 uninstall ad1    # Uninstall 'ad1' shortcut"
 }
 
 # Main Dispatch
 # Case structure is POSIX compliant
 case "$1" in
     uninstall)
+        UNINSTALL_SHORTCUT_NAME="$2"
         do_uninstall
         ;;
     help|--help|-h)
         show_help
         ;;
-    install|"")
+    install)
+        INSTALL_SHORTCUT_NAME="$2"
+        do_install
+        ;;
+    "")
+        # Default to install
         do_install
         ;;
     *)
-        echo "Unknown command: $1"
-        show_help
-        exit 1
+        # If first parameter doesn't match commands, treat it as shortcut name for install
+        INSTALL_SHORTCUT_NAME="$1"
+        do_install
         ;;
 esac
